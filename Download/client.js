@@ -89,7 +89,7 @@ function main() {
 		var currentTotalBytes = downloadSettings.downloadedBytes
 		var currentlyDownloadedBytes= currentTotalBytes - previouslyDownloadedBytes;
 
-		var currentSpeedInMbs= (currentlyDownloadedBytes /1000.0)/currentDownloadTime;
+		var currentSpeedInMbs= (currentlyDownloadedBytes *8/1000.0)/currentDownloadTime;
 		var percentDiff=Math.abs((currentSpeedInMbs - previousDownloadSpeedInMbs)/currentSpeedInMbs); //potrebbe anche essere negativo
 
 		console.log('Numero di byte caricati in precedenza: ' + previouslyDownloadedBytes);
@@ -123,7 +123,7 @@ function main() {
 					clearInterval(secondInterval);
 				}
 				var downloadTime=Date.now() - downloadSettings.t0;
-				var downloadSpeedInMbs=(downloadSettings.downloadedBytes/1000)/downloadTime;
+				var downloadSpeedInMbs=(downloadSettings.downloadedBytes*8/1000)/downloadTime;
 				console.log('Dentro il SECONDO interval la velocita di download è pari a ' + downloadSpeedInMbs);
 			},1000)
 
