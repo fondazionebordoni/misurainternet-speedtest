@@ -16,22 +16,22 @@ var uploadTestGlobalVariables={
 	threshold: 0.10
 };
 
-
-//TODO: togliere il timeout e riflettere sulla necessita di manterene il controllo sullo status nell'onprogress
-var speedTestSharedVariables={
+var speedTestGlobalVariables={
 	serverUri: 'http://ec2-35-160-194-81.us-west-2.compute.amazonaws.com:8080',
-	testStatus: 0 // 0: not started, 1: ping test, 2: download test, 3: upload test, 4: finished
+	testStatus: 0, // 0: not started, 1: ping test, 2: download test, 3: upload test, 4: finished
+	speedtestFailed: false
 }
 
-function closeAllConnections(){
-	for(var i=0;i<uploadTestGlobalVariables.xhrArray.length; i++){
-		console.log('Closing xhrs from CLOSEALLCONNECTIONS')
-		try {
-			uploadTestGlobalVariables.xhrArray[i].abort();
-		}
-		catch(e){
-			console.log("errore in closeAllConnections nel forzare l'interruzione della connessione " + i);
-		}
+function closeAllConnections(arrayOfXhrs){
+	for(var i=0;i<arrayOfXhrs.length; i++){
+		arrayOfXhrs[i].onprogress = null;
+		arrayOfXhrs[i].onload = null;
+		arrayOfXhrs[i].onerror = null;
+		arrayOfXhrs[i].upload.onprogress = null;
+		arrayOfXhrs[i].upload.onload = null;
+		arrayOfXhrs[i].upload.onerror = null
+		arrayOfXhrs[i].abort();
+		delete (arrayOfXhrs[i]);
 	}
 }
 
@@ -57,33 +57,34 @@ function uploadStream(index,bytesToUpload,delay) {
 	setTimeout( function(){
 
 		var prevUploadedBytes=0;
-		if(speedTestSharedVariables.testStatus!=3){
+		if(speedTestGlobalVariables.testStatus!=3){
 			return;
 		}
 		xhr= new XMLHttpRequest();
 		uploadTestGlobalVariables.xhrArray[index]=xhr;
 
-		xhr.upload.onprogress=function(event){
-
-			if(speedTestSharedVariables.testStatus!=3){
-				console.log('Closing xhrs from ONPROGRESS')
-				try { xhr.abort() } catch (e) {console.log("errore nel forzare l'interruzione della connessione " + index) }
-				return;
-			}
-
+		uploadTestGlobalVariables.xhrArray[index].upload.onprogress=function(event){
 			var uploadedBytes= event.loaded - prevUploadedBytes;
 			uploadTestGlobalVariables.uploadedBytes+=uploadedBytes;
 			prevUploadedBytes=event.loaded;
 		}
 
-		xhr.upload.onload=function(event){
-			uploadTestGlobalVariables.count++;
-			uploadStream(index,bytesToUpload,0);
-
+		uploadTestGlobalVariables.xhrArray[index].onerror=function(event){
+			console.log(event);
+			console.log('at stream ' + index);
+			speedTestGlobalVariables.speedtestFailed=true;
+			uploadTestGlobalVariables.xhrArray[index].abort();
 		}
-		var url = speedTestSharedVariables.serverUri + '?r=' + Math.random();
-		xhr.open('POST',url);
-		xhr.send(bytesToUpload);
+
+		uploadTestGlobalVariables.xhrArray[index].upload.onload=function(event){
+			uploadTestGlobalVariables.count++;
+			uploadTestGlobalVariables.xhrArray[index].abort();
+			uploadStream(index,bytesToUpload,0);
+		}
+
+		var url = speedTestGlobalVariables.serverUri + '?r=' + Math.random();
+		uploadTestGlobalVariables.xhrArray[index].open('POST',url);
+		uploadTestGlobalVariables.xhrArray[index].send(bytesToUpload);
 	},delay);
 }
 
@@ -94,11 +95,21 @@ function uploadTest() {
 	var previousUploadTime=testStartTime;
 	var prevInstSpeedInMbs=0;
 	var testData=generateTestData(uploadTestGlobalVariables.dataLength/(Math.pow(1024,2)));
-	speedTestSharedVariables.testStatus=3;
+
+	speedTestGlobalVariables.testStatus=3;
 	for(var i=0;i<uploadTestGlobalVariables.streams;i++){
 		uploadStream(i,testData,0);
 	}
+
 	var firstInterval = setInterval(function () {
+
+		if(speedTestGlobalVariables.speedtestFailed){
+			closeAllConnections(uploadTestGlobalVariables.xhrArray);
+			clearInterval(firstInterval);
+			console.log('Fallito test di upload')
+			return;
+		}
+
 		var tf=Date.now();
 		var deltaTime=tf - previousUploadTime;
 		var currentlyUploadedBytes = uploadTestGlobalVariables.uploadedBytes
@@ -116,7 +127,7 @@ function uploadTest() {
 		previouslyUploadedBytes= currentlyUploadedBytes;
 		prevInstSpeedInMbs=instSpeedInMbs;
 
- 		if(percentDiff<uploadTestGlobalVariables.threshold){
+		if(percentDiff<uploadTestGlobalVariables.threshold){
 			console.log('valore minore della soglia!');
 
 			var measureStartTime = Date.now();
@@ -124,6 +135,14 @@ function uploadTest() {
 			clearInterval(firstInterval);
 
 			var secondInterval= setInterval(function(){
+
+				if(speedTestGlobalVariables.speedtestFailed){
+					closeAllConnections(uploadTestGlobalVariables.xhrArray);
+					clearInterval(secondInterval);
+					console.log('Fallito test di upload')
+					return;
+				}
+
 				var time= Date.now();
 				var uploadTime=time - measureStartTime;
 				var uploadSpeedInMbs=(uploadTestGlobalVariables.uploadedBytes*8/1000)/uploadTime;
@@ -131,9 +150,9 @@ function uploadTest() {
 				console.log('Dentro il SECONDO interval la velocita di upload è pari a ' + uploadSpeedInMbs);
 
 				if( (time - measureStartTime) >= uploadTestGlobalVariables.timeout){
-					closeAllConnections();
+					closeAllConnections(uploadTestGlobalVariables.xhrArray);
 					clearInterval(secondInterval);
-					speedTestSharedVariables.testStatus=4; //TODO togliere questa istruzione quando mettero tutti i test nello stesso file
+					speedTestGlobalVariables.testStatus=4; //TODO togliere questa istruzione quando mettero tutti i test nello stesso file
 					var totalTime= (time - testStartTime)/1000.0;
 
 					console.log((time - measureStartTime)/1000);
