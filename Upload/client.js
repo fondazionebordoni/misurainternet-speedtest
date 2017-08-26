@@ -6,27 +6,28 @@ var sizes={
 	fiftyMB: 52428800
 };
 
-var uploadSettings={
-	initialDataLength: sizes.twentyMB,
-	streams: 6, //controllare poi
-	timeout: 15000,
-	status: 0,
+var uploadTestGlobalVariables={
+	dataLength: sizes.tenMB,
+	streams: 10,
+	timeout: 10000,
 	uploadedBytes: 0,
-	serverUri: 'http://ec2-35-160-194-81.us-west-2.compute.amazonaws.com:8080',
 	count: 0,
-	t0: 0,
 	xhrArray: [],
 	threshold: 0.10
 };
 
-//TODO: mettere t0, dentro upload() e mettere una variabile globale object per le informazioni comuni
 
+//TODO: togliere il timeout e riflettere sulla necessita di manterene il controllo sullo status nell'onprogress
+var speedTestSharedVariables={
+	serverUri: 'http://ec2-35-160-194-81.us-west-2.compute.amazonaws.com:8080',
+	testStatus: 0 // 0: not started, 1: ping test, 2: download test, 3: upload test, 4: finished
+}
 
 function closeAllConnections(){
-	for(var i=0;i<uploadSettings.xhrArray.length; i++){
+	for(var i=0;i<uploadTestGlobalVariables.xhrArray.length; i++){
 		console.log('Closing xhrs from CLOSEALLCONNECTIONS')
 		try {
-			uploadSettings.xhrArray[i].abort();
+			uploadTestGlobalVariables.xhrArray[i].abort();
 		}
 		catch(e){
 			console.log("errore in closeAllConnections nel forzare l'interruzione della connessione " + i);
@@ -56,107 +57,94 @@ function uploadStream(index,bytesToUpload,delay) {
 	setTimeout( function(){
 
 		var prevUploadedBytes=0;
-		if(uploadSettings.status===2){
+		if(speedTestSharedVariables.testStatus!=3){
 			return;
 		}
 		xhr= new XMLHttpRequest();
-		uploadSettings.xhrArray[index]=xhr;
+		uploadTestGlobalVariables.xhrArray[index]=xhr;
 
 		xhr.upload.onprogress=function(event){
 
-			if(uploadSettings.status===2){
+			if(speedTestSharedVariables.testStatus!=3){
 				console.log('Closing xhrs from ONPROGRESS')
 				try { xhr.abort() } catch (e) {console.log("errore nel forzare l'interruzione della connessione " + index) }
 				return;
 			}
 
 			var uploadedBytes= event.loaded - prevUploadedBytes;
-			uploadSettings.uploadedBytes+=uploadedBytes;
+			uploadTestGlobalVariables.uploadedBytes+=uploadedBytes;
 			prevUploadedBytes=event.loaded;
 		}
 
 		xhr.upload.onload=function(event){
-			uploadSettings.count++;
-			if(uploadSettings.status===2){
-				console.log('Closing xhrs from ONLOAD')
-				try { xhr.abort() } catch (e) {console.log("errore nel forzare l'interruzione della connessione " + index) }
-				return;
-			}
-			else{
-				uploadStream(index,bytesToUpload,0);
-			}
+			uploadTestGlobalVariables.count++;
+			uploadStream(index,bytesToUpload,0);
+
 		}
-		var url = uploadSettings.serverUri + '?r=' + Math.random();
+		var url = speedTestSharedVariables.serverUri + '?r=' + Math.random();
 		xhr.open('POST',url);
 		xhr.send(bytesToUpload);
 	},delay);
 }
 
 
-function main() {
-
-	var startingTime= Date.now();
+function uploadTest() {
+	var testStartTime= Date.now();
 	var previouslyUploadedBytes=0;
-	var previousUploadTime=startingTime;
-	var previousUploadSpeedInMbs=0;
-	var testData=generateTestData(20);
-	uploadSettings.status=1;
-
-	for(var i=0;i<uploadSettings.streams;i++){
+	var previousUploadTime=testStartTime;
+	var prevInstSpeedInMbs=0;
+	var testData=generateTestData(uploadTestGlobalVariables.dataLength/(Math.pow(1024,2)));
+	speedTestSharedVariables.testStatus=3;
+	for(var i=0;i<uploadTestGlobalVariables.streams;i++){
 		uploadStream(i,testData,0);
 	}
-
-	var interval = setInterval(function () {
-
+	var firstInterval = setInterval(function () {
 		var tf=Date.now();
-		var currentUploadTime=tf - previousUploadTime;
-
-		//ridenominare le variabili
-		var currentTotalBytes = uploadSettings.uploadedBytes
-		var currentlyUploadedBytes= currentTotalBytes - previouslyUploadedBytes;
-
-		var currentSpeedInMbs= (currentlyUploadedBytes*8/1000.0)/currentUploadTime;
-		var percentDiff=Math.abs((currentSpeedInMbs - previousUploadSpeedInMbs)/currentSpeedInMbs); //potrebbe anche essere negativo
+		var deltaTime=tf - previousUploadTime;
+		var currentlyUploadedBytes = uploadTestGlobalVariables.uploadedBytes
+		var deltaByte= currentlyUploadedBytes - previouslyUploadedBytes;
+		var instSpeedInMbs= (deltaByte*8/1000.0)/deltaTime;
+		var percentDiff=Math.abs((instSpeedInMbs - prevInstSpeedInMbs)/instSpeedInMbs); //potrebbe anche essere negativo
 
 		console.log('Numero di byte mandati in precedenza: ' + previouslyUploadedBytes);
 		console.log('Numero di byte mandati in questo istante: ' + currentlyUploadedBytes);
-		console.log("L'intervallo di tempo attualmente considerato (secondi) per il calcolo della velocita è " + (currentUploadTime/1000.0))
-		console.log('La velocita PRECEDENTE(Mbs) era pari a ' + previousUploadSpeedInMbs + ' mentre la velocita attuale(Mbs) è pari a '+ currentSpeedInMbs);
+		console.log("L'intervallo di tempo attualmente considerato (secondi) per il calcolo della velocita è " + (deltaTime/1000.0))
+		console.log('La velocita PRECEDENTE(Mbs) era pari a ' + prevInstSpeedInMbs + ' mentre la velocita attuale(Mbs) è pari a '+ instSpeedInMbs);
 		console.log('percentDiff: ' + percentDiff*100 + '%');
 
 		previousUploadTime=tf;
-		previouslyUploadedBytes= currentTotalBytes;
-		previousUploadSpeedInMbs=currentSpeedInMbs;
+		previouslyUploadedBytes= currentlyUploadedBytes;
+		prevInstSpeedInMbs=instSpeedInMbs;
 
- 		if(percentDiff<uploadSettings.threshold){
+ 		if(percentDiff<uploadTestGlobalVariables.threshold){
 			console.log('valore minore della soglia!');
-			uploadSettings.t0 = Date.now();
-			uploadSettings.uploadedBytes = 0;
 
-			clearInterval(interval);
-
-			setTimeout(function(){
-				uploadSettings.status=2;
-				closeAllConnections();
-				console.log('tempo scaduto!');
-				console.log(uploadSettings);
-				var totalTime= (Date.now() - startingTime)/1000.0;
-				console.log('Per fare questa misurazione ci sono voluti ' + totalTime +' secondi');
-			},uploadSettings.timeout);
+			var measureStartTime = Date.now();
+			uploadTestGlobalVariables.uploadedBytes = 0;
+			clearInterval(firstInterval);
 
 			var secondInterval= setInterval(function(){
-				if(uploadSettings.status===2){
-					clearInterval(secondInterval);
-				}
-				var uploadTime=Date.now() - uploadSettings.t0;
-				var uploadSpeedInMbs=(uploadSettings.uploadedBytes*8/1000)/uploadTime;
+				var time= Date.now();
+				var uploadTime=time - measureStartTime;
+				var uploadSpeedInMbs=(uploadTestGlobalVariables.uploadedBytes*8/1000)/uploadTime;
+
 				console.log('Dentro il SECONDO interval la velocita di upload è pari a ' + uploadSpeedInMbs);
+
+				if( (time - measureStartTime) >= uploadTestGlobalVariables.timeout){
+					closeAllConnections();
+					clearInterval(secondInterval);
+					speedTestSharedVariables.testStatus=4; //TODO togliere questa istruzione quando mettero tutti i test nello stesso file
+					var totalTime= (time - testStartTime)/1000.0;
+
+					console.log((time - measureStartTime)/1000);
+					console.log('tempo scaduto!');
+					console.log(uploadTestGlobalVariables);
+					console.log('Per fare questa misurazione ci sono voluti ' + totalTime +' secondi');
+				}
 			},1000)
-
 		}
-
 	}, 3000)
 
 }
 
-main();
+uploadTest();
