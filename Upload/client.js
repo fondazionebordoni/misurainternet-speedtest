@@ -19,6 +19,9 @@ var uploadSettings={
 	threshold: 0.10
 };
 
+//TODO: mettere t0, dentro upload() e mettere una variabile globale object per le informazioni comuni
+
+
 function closeAllConnections(){
 	for(var i=0;i<uploadSettings.xhrArray.length; i++){
 		console.log('Closing xhrs from CLOSEALLCONNECTIONS')

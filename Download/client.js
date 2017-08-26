@@ -6,23 +6,26 @@ var sizes={
 	fiftyMB: 52428800
 };
 
-var downloadSettings={
-	initialDataLength: sizes.tenMB,
-	streams: 5, //per chrome
-	timeout: 15000,
-	status: 0,
+var downloadTestGlobalVariables={
+	dataLength: sizes.tenMB,
+	streams: 3,
+	timeout: 10000,
 	downloadedBytes: 0,
-	serverUri: 'http://192.168.88.45:8080',
 	count: 0,
 	t0: 0,
 	xhrArray: [],
 	threshold: 0.10
 };
 
+var speedTestSharedVariables={
+	serverUri: 'http://ec2-35-160-194-81.us-west-2.compute.amazonaws.com:8080',
+	testStatus: 0 // 0: not started, 1: ping test, 2: download test, 3: upload test, 4: finished
+}
+
 function closeAllConnections(){
-	for(var i=0;i<downloadSettings.xhrArray.length; i++){
+	for(var i=0;i<downloadTestGlobalVariables.xhrArray.length; i++){
 		try {
-			downloadSettings.xhrArray[i].abort();
+			downloadTestGlobalVariables.xhrArray[i].abort();
 		}
 		catch(e){}
 	}
@@ -30,108 +33,96 @@ function closeAllConnections(){
 
 function downloadStream(index,numOfBytes,delay) {
 	setTimeout( function(){
-
 		var prevLoadedBytes=0;
-		if(downloadSettings.status===2){
+		if(speedTestSharedVariables.testStatus!==2){
 			return;
 		}
 		xhr= new XMLHttpRequest();
-		downloadSettings.xhrArray[index]=xhr;
+		downloadTestGlobalVariables.xhrArray[index]=xhr;
 
 		xhr.onprogress=function(event){
 
-			if(downloadSettings.status===2){
+			if(speedTestSharedVariables.testStatus!==2){
 				try { xhr.abort() } catch (e) { }
 				return;
 			}
 
 			var loadedBytes= event.loaded - prevLoadedBytes;
-			downloadSettings.downloadedBytes+=loadedBytes;
+			downloadTestGlobalVariables.downloadedBytes+=loadedBytes;
 			prevLoadedBytes=event.loaded;
 		}
 
 		xhr.onload=function(event){
-			downloadSettings.count++;
-			if(downloadSettings.status===2){
-				try { xhr.abort() } catch (e) { }
-				return;
-			}
-			else{
-				downloadStream(index,numOfBytes,0);
-			}
+			downloadTestGlobalVariables.count++;
+			downloadStream(index,numOfBytes,0);
 		}
 
 		var req={request:'download',data_length:numOfBytes};
 		var jsonReq=JSON.stringify(req);
-		var url = downloadSettings.serverUri + '?r=' + Math.random()+ "&data=" + encodeURIComponent(jsonReq);
+		var url = speedTestSharedVariables.serverUri + '?r=' + Math.random()+ "&data=" + encodeURIComponent(jsonReq);
 		xhr.open('GET',url);
 		xhr.send();
 	},delay);
 }
 
 
-function main() {
+function downloadTest() {
 
-	downloadSettings.t0= Date.now();
+	var startTime= Date.now();
 	var previouslyDownloadedBytes=0;
-	var previousDownloadTime=downloadSettings.t0;
-	var previousDownloadSpeedInMbs=0;
-	downloadSettings.status=1;
+	var previousDownloadTime=startTime;
+	var prevInstSpeedInMbs=0;
+	speedTestSharedVariables.testStatus=2;
 
-	for(var i=0;i<downloadSettings.streams;i++){
-		downloadStream(i,downloadSettings.initialDataLength,0);
+	for(var i=0;i<downloadTestGlobalVariables.streams;i++){
+		downloadStream(i,downloadTestGlobalVariables.dataLength,0);
 	}
 
-	var interval = setInterval(function () {
-
+	var firstInterval = setInterval(function () {
 		var tf=Date.now();
-		var currentDownloadTime=tf - previousDownloadTime;
-		var currentTotalBytes = downloadSettings.downloadedBytes
-		var currentlyDownloadedBytes= currentTotalBytes - previouslyDownloadedBytes;
-
-		var currentSpeedInMbs= (currentlyDownloadedBytes *8/1000.0)/currentDownloadTime;
-		var percentDiff=Math.abs((currentSpeedInMbs - previousDownloadSpeedInMbs)/currentSpeedInMbs); //potrebbe anche essere negativo
+		var deltaTime=tf - previousDownloadTime;
+		var currentlyDownloadedBytes = downloadTestGlobalVariables.downloadedBytes
+		var deltaByte= currentlyDownloadedBytes - previouslyDownloadedBytes;
+		var instSpeedInMbs= (deltaByte *8/1000.0)/deltaTime;
+		var percentDiff=Math.abs((instSpeedInMbs - prevInstSpeedInMbs)/instSpeedInMbs); //potrebbe anche essere negativo
 
 		console.log('Numero di byte caricati in precedenza: ' + previouslyDownloadedBytes);
-		console.log('Numero di byte caricati in questo istante: ' + currentlyDownloadedBytes);
-		console.log("L'intervallo di tempo attualmente considerato (secondi) per il calcolo della velocita è " + (currentDownloadTime/1000.0))
-		console.log('La velocita PRECEDENTE(Mbs) era pari a ' + previousDownloadSpeedInMbs + ' mentre la velocita attuale(Mbs) è pari a '+ currentSpeedInMbs);
-		console.log('percentDiff: ' + percentDiff*100);
+		console.log('Numero di byte caricati in questo istante: ' + deltaByte);
+		console.log("L'intervallo di tempo attualmente considerato (secondi) per il calcolo della velocita è " + (deltaTime/1000.0))
+		console.log('La velocita PRECEDENTE(Mbs) era pari a ' + prevInstSpeedInMbs + ' mentre la velocita attuale(Mbs) è pari a '+ instSpeedInMbs);
+		console.log('percentDiff: ' + percentDiff*100 + '%');
 
 		previousDownloadTime=tf;
-		previouslyDownloadedBytes= currentTotalBytes;
-		previousDownloadSpeedInMbs=currentSpeedInMbs;
+		previouslyDownloadedBytes= currentlyDownloadedBytes;
+		prevInstSpeedInMbs=instSpeedInMbs;
 
- 		if(percentDiff<downloadSettings.threshold){
+		if(percentDiff<downloadTestGlobalVariables.threshold){
 			console.log('valore minore della soglia!');
-			downloadSettings.t0 = Date.now();
-			downloadSettings.downloadedBytes = 0;
-
-			clearInterval(interval);
-
-			setTimeout(function(){
-				downloadSettings.status=2;
-				closeAllConnections();
-				console.log('tempo scaduto!');
-				console.log(downloadSettings);
-				var totalTime= (Date.now() - downloadSettings.t0)/1000.0;
-				console.log('Per fare questa misurazione ci sono voluti ' + totalTime +' secondi');
-			},downloadSettings.timeout);
+			downloadTestGlobalVariables.t0 = Date.now();
+			downloadTestGlobalVariables.downloadedBytes = 0;
+			clearInterval(firstInterval);
 
 			var secondInterval= setInterval(function(){
-				if(downloadSettings.status===2){
+				var time= Date.now();
+				if( (time - downloadTestGlobalVariables.t0) >= downloadTestGlobalVariables.timeout){
+					closeAllConnections();
 					clearInterval(secondInterval);
+					console.log((time - downloadTestGlobalVariables.t0)/1000);
+					speedTestSharedVariables.testStatus=3; //TODO togliere questa istruzione quando mettero tutti i test nello stesso file
+					console.log('tempo scaduto!');
+					console.log(downloadTestGlobalVariables);
+					var totalTime= (time - startTime)/1000.0;
+					console.log('Per fare questa misurazione ci sono voluti ' + totalTime +' secondi');
 				}
-				var downloadTime=Date.now() - downloadSettings.t0;
-				var downloadSpeedInMbs=(downloadSettings.downloadedBytes*8/1000)/downloadTime;
-				console.log('Dentro il SECONDO interval la velocita di download è pari a ' + downloadSpeedInMbs);
+				else{
+					var downloadTime= time - downloadTestGlobalVariables.t0;
+					var downloadSpeedInMbs=(downloadTestGlobalVariables.downloadedBytes*8/1000)/downloadTime;
+					console.log('Dentro il SECONDO interval la velocita di download è pari a ' + downloadSpeedInMbs);
+				}
 			},1000)
-
 		}
-
 	}, 3000)
 
 }
 
-main();
-//mettere previousDownloadedBytes e modificare lo start del cronometro
+downloadTest();

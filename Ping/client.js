@@ -1,13 +1,11 @@
 var pingGlobalVariables={
-	n_tot: 100,
+	n_tot: 4,
 	totalTime: 0,
 	serverUri: 'http://ec2-35-160-194-81.us-west-2.compute.amazonaws.com:8080',
 	count: 0,
 	t0: 0,
 	firstPing: false
 };
-
-
 
 function ping(){
 	var xhr=new XMLHttpRequest();
