@@ -16,51 +16,59 @@ var downloadTestGlobalVariables={
 	threshold: 0.10
 };
 
-var speedTestSharedVariables={
+var speedTestGlobalVariables={
 	serverUri: 'http://ec2-35-160-194-81.us-west-2.compute.amazonaws.com:8080',
-	testStatus: 0 // 0: not started, 1: ping test, 2: download test, 3: upload test, 4: finished
+	testStatus: 0, // 0: not started, 1: ping test, 2: download test, 3: upload test, 4: finished
+	speedtestFailed: false
 }
 
-function closeAllConnections(){
-	for(var i=0;i<downloadTestGlobalVariables.xhrArray.length; i++){
-		try {
-			downloadTestGlobalVariables.xhrArray[i].abort();
-		}
-		catch(e){}
+function closeAllConnections(arrayOfXhrs){
+	for(var i=0;i<arrayOfXhrs.length; i++){
+		arrayOfXhrs[i].onprogress = null;
+		arrayOfXhrs[i].onload = null;
+		arrayOfXhrs[i].onerror = null;
+    arrayOfXhrs[i].upload.onprogress = null;
+		arrayOfXhrs[i].upload.onload = null;
+		arrayOfXhrs[i].upload.onerror = null
+    arrayOfXhrs[i].abort();
+    delete (arrayOfXhrs[i]);
 	}
 }
 
 function downloadStream(index,numOfBytes,delay) {
 	setTimeout( function(){
 		var prevLoadedBytes=0;
-		if(speedTestSharedVariables.testStatus!==2){
+		if(speedTestGlobalVariables.testStatus!==2){
 			return;
 		}
+
 		xhr= new XMLHttpRequest();
 		downloadTestGlobalVariables.xhrArray[index]=xhr;
 
-		xhr.onprogress=function(event){
-
-			if(speedTestSharedVariables.testStatus!==2){
-				try { xhr.abort() } catch (e) { }
-				return;
-			}
-
+		downloadTestGlobalVariables.xhrArray[index].onprogress=function(event){
 			var loadedBytes= event.loaded - prevLoadedBytes;
 			downloadTestGlobalVariables.downloadedBytes+=loadedBytes;
 			prevLoadedBytes=event.loaded;
 		}
 
-		xhr.onload=function(event){
+		downloadTestGlobalVariables.xhrArray[index].onerror=function(event){
+			console.log(event);
+			console.log('at stream ' + index);
+			speedTestGlobalVariables.speedtestFailed=true;
+			downloadTestGlobalVariables.xhrArray[index].abort();
+		}
+
+		downloadTestGlobalVariables.xhrArray[index].onload=function(event){
 			downloadTestGlobalVariables.count++;
+			downloadTestGlobalVariables.xhrArray[index].abort();
 			downloadStream(index,numOfBytes,0);
 		}
 
 		var req={request:'download',data_length:numOfBytes};
 		var jsonReq=JSON.stringify(req);
-		var url = speedTestSharedVariables.serverUri + '?r=' + Math.random()+ "&data=" + encodeURIComponent(jsonReq);
-		xhr.open('GET',url);
-		xhr.send();
+		var url = speedTestGlobalVariables.serverUri + '?r=' + Math.random()+ "&data=" + encodeURIComponent(jsonReq);
+		downloadTestGlobalVariables.xhrArray[index].open('GET',url);
+		downloadTestGlobalVariables.xhrArray[index].send();
 	},delay);
 }
 
@@ -71,13 +79,20 @@ function downloadTest() {
 	var previouslyDownloadedBytes=0;
 	var previousDownloadTime=testStartTime;
 	var prevInstSpeedInMbs=0;
-	speedTestSharedVariables.testStatus=2;
+	speedTestGlobalVariables.testStatus=2;
 
 	for(var i=0;i<downloadTestGlobalVariables.streams;i++){
 		downloadStream(i,downloadTestGlobalVariables.dataLength,0);
 	}
 
 	var firstInterval = setInterval(function () {
+		if(speedTestGlobalVariables.speedtestFailed){
+			closeAllConnections(downloadTestGlobalVariables.xhrArray);
+			clearInterval(firstInterval);
+			console.log('Fallito test di download')
+			return;
+		}
+		
 		var tf=Date.now();
 		var deltaTime=tf - previousDownloadTime;
 		var currentlyDownloadedBytes = downloadTestGlobalVariables.downloadedBytes
@@ -102,6 +117,13 @@ function downloadTest() {
 			clearInterval(firstInterval);
 
 			var secondInterval= setInterval(function(){
+				if(speedTestGlobalVariables.speedtestFailed){
+					closeAllConnections(downloadTestGlobalVariables.xhrArray);
+					clearInterval(secondInterval);
+					console.log('Fallito test di download')
+					return;
+				}
+
 				var time= Date.now();
 				var downloadTime= time - measureStartTime;
 				var downloadSpeedInMbs=(downloadTestGlobalVariables.downloadedBytes*8/1000)/downloadTime;
@@ -109,9 +131,9 @@ function downloadTest() {
 				console.log('Dentro il SECONDO interval la velocita di download è pari a ' + downloadSpeedInMbs);
 
 				if( (time - measureStartTime) >= downloadTestGlobalVariables.timeout){
-					closeAllConnections();
+					closeAllConnections(downloadTestGlobalVariables.xhrArray);
 					clearInterval(secondInterval);
-					speedTestSharedVariables.testStatus=3; //TODO togliere questa istruzione quando mettero tutti i test nello stesso file
+					speedTestGlobalVariables.testStatus=3; //TODO togliere questa istruzione quando mettero tutti i test nello stesso file
 					var totalTime= (time - testStartTime)/1000.0;
 
 					console.log((time - measureStartTime)/1000);
