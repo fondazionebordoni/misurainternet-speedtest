@@ -8,7 +8,7 @@ var sizes={
 
 var downloadTestGlobalVariables={
 	dataLength: sizes.tenMB,
-	streams: 5,
+	streams: 6,
 	timeout: 10000,
 	downloadedBytes: 0,
 	count: 0,
@@ -27,12 +27,14 @@ function closeAllConnections(arrayOfXhrs){
 		arrayOfXhrs[i].onprogress = null;
 		arrayOfXhrs[i].onload = null;
 		arrayOfXhrs[i].onerror = null;
-    arrayOfXhrs[i].upload.onprogress = null;
+    	arrayOfXhrs[i].upload.onprogress = null;
 		arrayOfXhrs[i].upload.onload = null;
 		arrayOfXhrs[i].upload.onerror = null
-    arrayOfXhrs[i].abort();
-    delete (arrayOfXhrs[i]);
+    	arrayOfXhrs[i].abort();
+    	delete (arrayOfXhrs[i]);
 	}
+	arrayOfXhrs=null;
+
 }
 
 function downloadStream(index,numOfBytes,delay) {

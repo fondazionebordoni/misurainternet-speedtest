@@ -8,7 +8,7 @@ var sizes={
 
 var uploadTestGlobalVariables={
 	dataLength: sizes.tenMB,
-	streams: 10,
+	streams: 6,
 	timeout: 10000,
 	uploadedBytes: 0,
 	count: 0,
@@ -33,6 +33,8 @@ function closeAllConnections(arrayOfXhrs){
 		arrayOfXhrs[i].abort();
 		delete (arrayOfXhrs[i]);
 	}
+	arrayOfXhrs=null;
+
 }
 
 function generateTestData(numberOfMB){
@@ -104,9 +106,9 @@ function uploadTest() {
 	var firstInterval = setInterval(function () {
 
 		if(speedTestGlobalVariables.speedtestFailed){
+			console.log('Fallito test di upload')
 			closeAllConnections(uploadTestGlobalVariables.xhrArray);
 			clearInterval(firstInterval);
-			console.log('Fallito test di upload')
 			return;
 		}
 
