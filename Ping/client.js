@@ -1,5 +1,5 @@
 var pingGlobalVariables={
-	n_tot: 10,
+	n_tot: 4,
 	totalTime: 0,
 	count: 0,
 	firstPing: false
@@ -11,7 +11,7 @@ var speedTestGlobalVariables={
 	speedtestFailed: false
 }
 
-function ping(){
+function ping(nextFunction){
 	var t0;
 	var xhr=new XMLHttpRequest();
 
@@ -32,7 +32,7 @@ function ping(){
 			console.log('INFO: Primo ping!');
 			console.log('INFO: Il valore del primo ping è ' + firstPingValue);
 			console.log('___________________________________________________');
-			ping(); //escludo il primo ping
+			ping(nextFunction); //escludo il primo ping
 		}
 
 		else {
@@ -51,13 +51,15 @@ function ping(){
 				console.log('___________________________________________________');
 				console.log('___________________________________________________');
 				console.log('___________________________________________________');
+				if(nextFunction!=undefined){
+					nextFunction();
+				}
 			}
 			else{
-				ping();
+				ping(nextFunction);
 			}
 		}
-	}// end onload
-
+	} // end onload
 	xhr.open('HEAD',speedTestGlobalVariables.serverUri + '?no-cache=' + Math.random());
 	t0=Date.now();
 	xhr.send();

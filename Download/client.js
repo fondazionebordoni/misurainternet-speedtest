@@ -75,7 +75,7 @@ function downloadStream(index,numOfBytes,delay) {
 }
 
 
-function downloadTest() {
+function downloadTest(nextFunction) {
 	var testStartTime= Date.now();
 	var previouslyDownloadedBytes=0;
 	var previousDownloadTime=testStartTime;
@@ -146,6 +146,9 @@ function downloadTest() {
 					console.log('___________________________________________________');
 					console.log('___________________________________________________');
 					console.log('___________________________________________________');
+					if(nextFunction!=undefined){
+						nextFunction();
+					}
 				}
 			},1000)
 		}

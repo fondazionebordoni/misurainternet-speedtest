@@ -89,7 +89,7 @@ function uploadStream(index,bytesToUpload,delay) {
 }
 
 
-function uploadTest() {
+function uploadTest(nextFunction) {
 	var testStartTime= Date.now();
 	var previouslyUploadedBytes=0;
 	var previousUploadTime=testStartTime;
@@ -162,6 +162,9 @@ function uploadTest() {
 					console.log('___________________________________________________');
 					console.log('___________________________________________________');
 					console.log('___________________________________________________');
+					if(nextFunction!=undefined){
+						nextFunction();
+					}
 				}
 			},1000)
 		}
