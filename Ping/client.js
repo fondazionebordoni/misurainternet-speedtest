@@ -1,5 +1,5 @@
 var pingGlobalVariables={
-	n_tot: 4,
+	n_tot: 10,
 	totalTime: 0,
 	count: 0,
 	firstPing: false
@@ -48,6 +48,9 @@ function ping(){
 				console.log('END: Misura terminata!');
 				console.log('END: Sono stati effettuati in tutto ' + pingGlobalVariables.count + ' misurazioni');
 				console.log('END: La media è ' + pingGlobalVariables.totalTime/pingGlobalVariables.count + 'ms');
+				console.log('___________________________________________________');
+				console.log('___________________________________________________');
+				console.log('___________________________________________________');
 			}
 			else{
 				ping();

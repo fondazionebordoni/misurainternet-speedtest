@@ -40,9 +40,7 @@ function closeAllConnections(arrayOfXhrs){
 function generateTestData(numberOfMB){
 	var array=[];
 	var buffer=new ArrayBuffer(1048576);
-	console.log(buffer);
 	var bufferView= new Uint32Array(buffer);
-	console.log(bufferView);
 	var limit= Math.pow(2,32);
 	for(var i=0; i<bufferView.length; i++){
 		bufferView[i]=Math.random() * limit;
@@ -51,18 +49,18 @@ function generateTestData(numberOfMB){
 		array.push(bufferView);
 	}
 	var b= new Blob(array);
-	console.log(b.size);
 	return b;
 }
 
 function uploadStream(index,bytesToUpload,delay) {
-	setTimeout( function(){
+	setTimeout(function(){
 
 		var prevUploadedBytes=0;
 		if(speedTestGlobalVariables.testStatus!=3){
 			return;
 		}
-		xhr= new XMLHttpRequest();
+
+		var xhr= new XMLHttpRequest();
 		uploadTestGlobalVariables.xhrArray[index]=xhr;
 
 		uploadTestGlobalVariables.xhrArray[index].upload.onprogress=function(event){
@@ -71,9 +69,9 @@ function uploadStream(index,bytesToUpload,delay) {
 			prevUploadedBytes=event.loaded;
 		}
 
+		//TODO: mettere nell'onerror tutta la logica per fermare lo speedtest rendendo globali gli interval
 		uploadTestGlobalVariables.xhrArray[index].onerror=function(event){
-			console.log(event);
-			console.log('at stream ' + index);
+			console.log('ERR: Onerror event fired at stream ' + index);
 			speedTestGlobalVariables.speedtestFailed=true;
 			uploadTestGlobalVariables.xhrArray[index].abort();
 		}
@@ -97,8 +95,8 @@ function uploadTest() {
 	var previousUploadTime=testStartTime;
 	var prevInstSpeedInMbs=0;
 	var testData=generateTestData(uploadTestGlobalVariables.dataLength/(Math.pow(1024,2)));
+	speedTestGlobalVariables.testStatus=3; //TODO: togliere poi questa istruzione
 
-	speedTestGlobalVariables.testStatus=3;
 	for(var i=0;i<uploadTestGlobalVariables.streams;i++){
 		uploadStream(i,testData,0);
 	}
@@ -106,9 +104,9 @@ function uploadTest() {
 	var firstInterval = setInterval(function () {
 
 		if(speedTestGlobalVariables.speedtestFailed){
-			console.log('Fallito test di upload')
 			closeAllConnections(uploadTestGlobalVariables.xhrArray);
 			clearInterval(firstInterval);
+			console.log('ERR: Fallito test di upload')
 			return;
 		}
 
@@ -119,29 +117,29 @@ function uploadTest() {
 		var instSpeedInMbs= (deltaByte*8/1000.0)/deltaTime;
 		var percentDiff=Math.abs((instSpeedInMbs - prevInstSpeedInMbs)/instSpeedInMbs); //potrebbe anche essere negativo
 
-		console.log('Numero di byte mandati in precedenza: ' + previouslyUploadedBytes);
-		console.log('Numero di byte mandati in questo istante: ' + currentlyUploadedBytes);
-		console.log("L'intervallo di tempo attualmente considerato (secondi) per il calcolo della velocita è " + (deltaTime/1000.0))
-		console.log('La velocita PRECEDENTE(Mbs) era pari a ' + prevInstSpeedInMbs + ' mentre la velocita attuale(Mbs) è pari a '+ instSpeedInMbs);
-		console.log('percentDiff: ' + percentDiff*100 + '%');
+		console.log('INFO: Numero di byte inviati in precedenza: ' + previouslyUploadedBytes);
+		console.log('INFO: Numero di byte inviati in questo istante: ' + currentlyUploadedBytes);
+		console.log("INFO: L'intervallo di tempo considerato(s) per la misura: " + (deltaTime/1000.0));
+		console.log('INFO: Velocita PRECEDENTE(Mbs): ' + prevInstSpeedInMbs);
+		console.log('INFO: Velocita ATTUALE(Mbs): '+ instSpeedInMbs);
+		console.log('INFO: Differenza percentuale: ' + percentDiff*100 + '%');
 
 		previousUploadTime=tf;
 		previouslyUploadedBytes= currentlyUploadedBytes;
 		prevInstSpeedInMbs=instSpeedInMbs;
 
 		if(percentDiff<uploadTestGlobalVariables.threshold){
-			console.log('valore minore della soglia!');
-
+			console.log('___________________________________________________');
+			console.log('INFO: Valore percentuale minore della soglia!');
 			var measureStartTime = Date.now();
 			uploadTestGlobalVariables.uploadedBytes = 0;
 			clearInterval(firstInterval);
 
 			var secondInterval= setInterval(function(){
-
 				if(speedTestGlobalVariables.speedtestFailed){
 					closeAllConnections(uploadTestGlobalVariables.xhrArray);
 					clearInterval(secondInterval);
-					console.log('Fallito test di upload')
+					console.log('ERR: Fallito test di upload')
 					return;
 				}
 
@@ -149,18 +147,21 @@ function uploadTest() {
 				var uploadTime=time - measureStartTime;
 				var uploadSpeedInMbs=(uploadTestGlobalVariables.uploadedBytes*8/1000)/uploadTime;
 
-				console.log('Dentro il SECONDO interval la velocita di upload è pari a ' + uploadSpeedInMbs);
+				console.log('INFO: La velocita di upload(Mbs) è pari a ' + uploadSpeedInMbs);
 
 				if( (time - measureStartTime) >= uploadTestGlobalVariables.timeout){
 					closeAllConnections(uploadTestGlobalVariables.xhrArray);
 					clearInterval(secondInterval);
 					speedTestGlobalVariables.testStatus=4; //TODO togliere questa istruzione quando mettero tutti i test nello stesso file
 					var totalTime= (time - testStartTime)/1000.0;
-
-					console.log((time - measureStartTime)/1000);
-					console.log('tempo scaduto!');
+					console.log('___________________________________________________');
+					console.log('END: Tempo scaduto!');
+					console.log('END : La misurazione è durata(s) ' + (time - measureStartTime)/1000);
 					console.log(uploadTestGlobalVariables);
-					console.log('Per fare questa misurazione ci sono voluti ' + totalTime +' secondi');
+					console.log('END: Per fare questa misurazione ci sono voluti ' + totalTime +' secondi');
+					console.log('___________________________________________________');
+					console.log('___________________________________________________');
+					console.log('___________________________________________________');
 				}
 			},1000)
 		}

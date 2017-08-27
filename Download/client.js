@@ -27,24 +27,24 @@ function closeAllConnections(arrayOfXhrs){
 		arrayOfXhrs[i].onprogress = null;
 		arrayOfXhrs[i].onload = null;
 		arrayOfXhrs[i].onerror = null;
-    	arrayOfXhrs[i].upload.onprogress = null;
+		arrayOfXhrs[i].upload.onprogress = null;
 		arrayOfXhrs[i].upload.onload = null;
 		arrayOfXhrs[i].upload.onerror = null
-    	arrayOfXhrs[i].abort();
-    	delete (arrayOfXhrs[i]);
+		arrayOfXhrs[i].abort();
+		delete (arrayOfXhrs[i]);
 	}
 	arrayOfXhrs=null;
-
 }
 
 function downloadStream(index,numOfBytes,delay) {
-	setTimeout( function(){
+	setTimeout(function(){
+
 		var prevLoadedBytes=0;
 		if(speedTestGlobalVariables.testStatus!==2){
 			return;
 		}
 
-		xhr= new XMLHttpRequest();
+		var xhr= new XMLHttpRequest();
 		downloadTestGlobalVariables.xhrArray[index]=xhr;
 
 		downloadTestGlobalVariables.xhrArray[index].onprogress=function(event){
@@ -53,9 +53,9 @@ function downloadStream(index,numOfBytes,delay) {
 			prevLoadedBytes=event.loaded;
 		}
 
+		//TODO: mettere nell'onerror tutta la logica per fermare lo speedtest rendendo globali gli interval
 		downloadTestGlobalVariables.xhrArray[index].onerror=function(event){
-			console.log(event);
-			console.log('at stream ' + index);
+			console.log('ERR: Onerror event fired at stream ' + index);
 			speedTestGlobalVariables.speedtestFailed=true;
 			downloadTestGlobalVariables.xhrArray[index].abort();
 		}
@@ -76,12 +76,11 @@ function downloadStream(index,numOfBytes,delay) {
 
 
 function downloadTest() {
-
 	var testStartTime= Date.now();
 	var previouslyDownloadedBytes=0;
 	var previousDownloadTime=testStartTime;
 	var prevInstSpeedInMbs=0;
-	speedTestGlobalVariables.testStatus=2;
+	speedTestGlobalVariables.testStatus=2; //TODO: togliere poi questa istruzione
 
 	for(var i=0;i<downloadTestGlobalVariables.streams;i++){
 		downloadStream(i,downloadTestGlobalVariables.dataLength,0);
@@ -91,10 +90,10 @@ function downloadTest() {
 		if(speedTestGlobalVariables.speedtestFailed){
 			closeAllConnections(downloadTestGlobalVariables.xhrArray);
 			clearInterval(firstInterval);
-			console.log('Fallito test di download')
+			console.log('ERR: Fallito test di download')
 			return;
 		}
-		
+
 		var tf=Date.now();
 		var deltaTime=tf - previousDownloadTime;
 		var currentlyDownloadedBytes = downloadTestGlobalVariables.downloadedBytes
@@ -102,18 +101,20 @@ function downloadTest() {
 		var instSpeedInMbs= (deltaByte *8/1000.0)/deltaTime;
 		var percentDiff=Math.abs((instSpeedInMbs - prevInstSpeedInMbs)/instSpeedInMbs); //potrebbe anche essere negativo
 
-		console.log('Numero di byte caricati in precedenza: ' + previouslyDownloadedBytes);
-		console.log('Numero di byte caricati in questo istante: ' + currentlyDownloadedBytes);
-		console.log("L'intervallo di tempo attualmente considerato (secondi) per il calcolo della velocita è " + (deltaTime/1000.0))
-		console.log('La velocita PRECEDENTE(Mbs) era pari a ' + prevInstSpeedInMbs + ' mentre la velocita attuale(Mbs) è pari a '+ instSpeedInMbs);
-		console.log('percentDiff: ' + percentDiff*100 + '%');
+		console.log('INFO: Numero di byte caricati in precedenza: ' + previouslyDownloadedBytes);
+		console.log('INFO: Numero di byte caricati in questo istante: ' + currentlyDownloadedBytes);
+		console.log("INFO: L'intervallo di tempo considerato(s) per la misura: " + (deltaTime/1000.0));
+		console.log('INFO: Velocita PRECEDENTE(Mbs): ' + prevInstSpeedInMbs);
+		console.log('INFO: Velocita ATTUALE(Mbs): '+ instSpeedInMbs);
+		console.log('INFO: Differenza percentuale: ' + percentDiff*100 + '%');
 
 		previousDownloadTime=tf;
 		previouslyDownloadedBytes= currentlyDownloadedBytes;
 		prevInstSpeedInMbs=instSpeedInMbs;
 
 		if(percentDiff<downloadTestGlobalVariables.threshold){
-			console.log('valore minore della soglia!');
+			console.log('___________________________________________________');
+			console.log('INFO: Valore percentuale minore della soglia!');
 			var measureStartTime = Date.now();
 			downloadTestGlobalVariables.downloadedBytes = 0;
 			clearInterval(firstInterval);
@@ -122,7 +123,7 @@ function downloadTest() {
 				if(speedTestGlobalVariables.speedtestFailed){
 					closeAllConnections(downloadTestGlobalVariables.xhrArray);
 					clearInterval(secondInterval);
-					console.log('Fallito test di download')
+					console.log('ERR: Fallito test di download')
 					return;
 				}
 
@@ -130,18 +131,21 @@ function downloadTest() {
 				var downloadTime= time - measureStartTime;
 				var downloadSpeedInMbs=(downloadTestGlobalVariables.downloadedBytes*8/1000)/downloadTime;
 
-				console.log('Dentro il SECONDO interval la velocita di download è pari a ' + downloadSpeedInMbs);
+				console.log('INFO: La velocita di download(Mbs) è pari a ' + downloadSpeedInMbs);
 
 				if( (time - measureStartTime) >= downloadTestGlobalVariables.timeout){
 					closeAllConnections(downloadTestGlobalVariables.xhrArray);
 					clearInterval(secondInterval);
 					speedTestGlobalVariables.testStatus=3; //TODO togliere questa istruzione quando mettero tutti i test nello stesso file
 					var totalTime= (time - testStartTime)/1000.0;
-
-					console.log((time - measureStartTime)/1000);
-					console.log('tempo scaduto!');
+					console.log('___________________________________________________');
+					console.log('END: Tempo scaduto!');
+					console.log('END : La misurazione è durata(s) ' + (time - measureStartTime)/1000);
 					console.log(downloadTestGlobalVariables);
-					console.log('Per fare questa misurazione ci sono voluti ' + totalTime +' secondi');
+					console.log('END: Per fare questa misurazione ci sono voluti ' + totalTime +' secondi');
+					console.log('___________________________________________________');
+					console.log('___________________________________________________');
+					console.log('___________________________________________________');
 				}
 			},1000)
 		}
