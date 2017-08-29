@@ -35,7 +35,7 @@ var uploadTestGlobalVariables={
 };
 
 var speedTestGlobalVariables={
-	serverUri: 'http://ec2-35-160-194-81.us-west-2.compute.amazonaws.com:8080',
+	serverUri: 'http://192.168.88.45:8080',
 	testStatus: 0, // 0: not started, 1: ping test, 2: download test, 3: upload test, 4: finished
 	speedtestFailed: false
 };
@@ -398,3 +398,5 @@ function startSpeedtest(){
 	})();
 }
 /*************END SPEEDTEST****************/
+
+
