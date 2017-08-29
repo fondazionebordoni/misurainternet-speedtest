@@ -8,16 +8,13 @@ var sizes={
 };
 
 var pingGlobalVariables={
-	n_tot: 4,
-	totalTime: 0,
-	count: 0,
-	firstPing: false
+	n_tot: 10,
 };
 
 var downloadTestGlobalVariables={
 	dataLength: sizes.tenMB,
 	streams: 6,
-	timeout: 10000,
+	timeout: 15000,
 	downloadedBytes: 0,
 	count: 0,
 	xhrArray: [],
@@ -27,7 +24,7 @@ var downloadTestGlobalVariables={
 var uploadTestGlobalVariables={
 	dataLength: sizes.tenMB,
 	streams: 6,
-	timeout: 10000,
+	timeout: 15000,
 	uploadedBytes: 0,
 	count: 0,
 	xhrArray: [],
@@ -35,7 +32,7 @@ var uploadTestGlobalVariables={
 };
 
 var speedTestGlobalVariables={
-	serverUri: 'http://192.168.88.45:8080',
+	serverName: '35.160.194.81:8080',
 	testStatus: 0, // 0: not started, 1: ping test, 2: download test, 3: upload test, 4: finished
 	speedtestFailed: false
 };
@@ -78,57 +75,51 @@ function generateTestData(numberOfMB){
 
 /*************PING TEST****************/
 function ping(nextFunction){
-	var t0;
-	var xhr=new XMLHttpRequest();
+	var count=0;
+	var totalTime=0;
+	var t0=0;
+	var ws=new WebSocket('ws://' + speedTestGlobalVariables.serverName);
 
-	xhr.onerror=function(){
-		console.log('ERR: test di ping fallito!');
-		speedTestGlobalVariables.speedtestFailed=true;
-		xhr.abort();
+	ws.onopen=function(){
+		t0=Date.now();
+		ws.send('');
 	}
 
-	xhr.onload=function(){
+	ws.onerror=function(){
+		console.log('ERR: test di ping fallito!');
+		speedTestGlobalVariables.speedtestFailed=true;
+		ws.close();
+	}
+
+	ws.onmessage=function(){
 		var tf=Date.now();
-		pingGlobalVariables.count++;
+		count++;
+		var latency= tf - t0;
+		totalTime+=latency;
 
-		if(pingGlobalVariables.count===1 && pingGlobalVariables.firstPing===false){
-			var firstPingValue= tf - t0;
-			pingGlobalVariables.firstPing=true;
-			pingGlobalVariables.count=0;
-			console.log('INFO: Primo ping!');
-			console.log('INFO: Il valore del primo ping è ' + firstPingValue);
+		console.log('INFO: Sono stati effettuati ' + count + ' ping');
+		console.log('INFO: Il ping è ' + latency + 'ms');
+		console.log('INFO: Il tempo TOTALE è ' + totalTime + 'ms');
+
+		if(count===pingGlobalVariables.n_tot){
 			console.log('___________________________________________________');
-			ping(nextFunction); //escludo il primo ping
-		}
-
-		else {
-			var latency= tf - t0;
-			pingGlobalVariables.totalTime+=latency;
-
-			console.log('INFO: Sono stati effettuati ' + pingGlobalVariables.count + ' ping');
-			console.log('INFO: Il ping è ' + latency + 'ms');
-			console.log('INFO: Il tempo TOTALE è ' + pingGlobalVariables.totalTime + 'ms');
-
-			if(pingGlobalVariables.count===pingGlobalVariables.n_tot){
-				console.log('___________________________________________________');
-				console.log('END: Misura terminata!');
-				console.log('END: Sono stati effettuati in tutto ' + pingGlobalVariables.count + ' misurazioni');
-				console.log('END: La media è ' + pingGlobalVariables.totalTime/pingGlobalVariables.count + 'ms');
-				console.log('___________________________________________________');
-				console.log('___________________________________________________');
-				console.log('___________________________________________________');
-				if(nextFunction!=undefined){
-					nextFunction();
-				}
-			}
-			else{
-				ping(nextFunction);
+			console.log('END: Misura terminata!');
+			console.log('END: Sono stati effettuati in tutto ' + count + ' misurazioni');
+			console.log('END: La media è ' + totalTime/count + 'ms');
+			console.log('___________________________________________________');
+			console.log('___________________________________________________');
+			console.log('___________________________________________________');
+			ws.close();
+			if(nextFunction!=undefined){
+				nextFunction();
 			}
 		}
-	} // end onload
-	xhr.open('HEAD',speedTestGlobalVariables.serverUri + '?no-cache=' + Math.random());
-	t0=Date.now();
-	xhr.send();
+		else{
+			t0=Date.now();
+			ws.send('');
+		}
+	}
+
 }
 /*************END PING TEST****************/
 
@@ -167,7 +158,7 @@ function downloadStream(index,numOfBytes,delay) {
 
 		var req={request:'download',data_length:numOfBytes};
 		var jsonReq=JSON.stringify(req);
-		var url = speedTestGlobalVariables.serverUri + '?r=' + Math.random()+ "&data=" + encodeURIComponent(jsonReq);
+		var url = 'http://' + speedTestGlobalVariables.serverName + '?r=' + Math.random()+ "&data=" + encodeURIComponent(jsonReq);
 		downloadTestGlobalVariables.xhrArray[index].open('GET',url);
 		downloadTestGlobalVariables.xhrArray[index].send();
 	},delay);
@@ -247,7 +238,7 @@ function downloadTest(nextFunction) {
 						nextFunction();
 					}
 				}
-			},1000)
+			},500)
 		}
 	}, 3000)
 
@@ -287,7 +278,7 @@ function uploadStream(index,bytesToUpload,delay) {
 			uploadStream(index,bytesToUpload,0);
 		}
 
-		var url = speedTestGlobalVariables.serverUri + '?r=' + Math.random();
+		var url = 'http://' + speedTestGlobalVariables.serverName + '?r=' + Math.random();
 		uploadTestGlobalVariables.xhrArray[index].open('POST',url);
 		uploadTestGlobalVariables.xhrArray[index].send(bytesToUpload);
 	},delay);
@@ -369,7 +360,7 @@ function uploadTest(nextFunction) {
 						nextFunction();
 					}
 				}
-			},1000)
+			},500)
 		}
 	}, 3000)
 
@@ -398,5 +389,3 @@ function startSpeedtest(){
 	})();
 }
 /*************END SPEEDTEST****************/
-
-

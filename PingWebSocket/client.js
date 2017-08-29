@@ -1,6 +1,5 @@
 var pingGlobalVariables={
 	n_tot: 4,
-	firstPingDone: false
 };
 
 var speedTestGlobalVariables={

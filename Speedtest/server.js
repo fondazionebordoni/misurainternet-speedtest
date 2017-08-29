@@ -1,6 +1,7 @@
 var http = require('http');
 var crypto = require('crypto');
 var url = require('url');
+var WebSocketServer = require('ws').Server;
 
 function generateTestData(bytes){
 	return crypto.randomBytes(bytes);
@@ -10,15 +11,8 @@ var server = http.createServer(function (req, res) {
 	res.setHeader('Access-Control-Allow-Origin', '*');
 	res.setHeader('Connection', 'keep-alive');
 
-	if(req.method==='HEAD' || req.method==='POST'){
-		if(req.method==='HEAD'){
-			console.log('Received message HEAD');
-
-		}
-		else{
-			console.log('Received message POST');
-
-		}
+	if(req.method==='POST'){
+		console.log('Received message POST');
 		res.writeHead(200);
 		res.end();
 	}
@@ -45,5 +39,12 @@ var server = http.createServer(function (req, res) {
 	}
 
 })
-
 server.listen(8080);
+
+wss = new WebSocketServer({server: server});
+wss.on('connection', function(ws) {
+    ws.on('message', function(message) {
+    	console.log('Received ping message');
+        ws.send('');
+    });
+});
