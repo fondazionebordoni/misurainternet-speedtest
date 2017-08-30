@@ -32,7 +32,7 @@ var uploadTestGlobalVariables={
 };
 
 var speedTestGlobalVariables={
-	serverName: '35.160.194.81:8080',
+	serverName: 'localhost:8080',
 	testStatus: 0, // 0: not started, 1: ping test, 2: download test, 3: upload test, 4: finished
 	speedtestFailed: false
 };
@@ -370,22 +370,56 @@ function uploadTest(nextFunction) {
 
 
 /*************SPEEDTEST****************/
-function startSpeedtest(){
+function startSpeedtest(testType, numberOfStreams, numberOfMB){
 	console.log('INFO: Inizia lo speedtest!');
-	(function(){
-		speedTestGlobalVariables.testStatus=1;
-		ping(
-			function(){
-				speedTestGlobalVariables.testStatus=2;
-				downloadTest(
-					function(){
-						speedTestGlobalVariables.testStatus=3;
-						uploadTest(
-							function(){
-								speedTestGlobalVariables.testStatus=4;
+
+	//per fare test, considero solo i test di download e upload (almeno per il momento)
+	if(testType!=undefined){
+		console.log('INFO: Verrà effettuato soltanto il test di: ' + testType);
+		console.log('INFO: Il test verrà effettuato usando ' + numberOfStreams + ' connnessioni in parallelo');
+		console.log('INFO: Il test verrà effettuato usando ' + numberOfMB + ' MB di dati in ' + testType);
+		if(testType==='download'){
+			speedTestGlobalVariables.testStatus=2;
+			downloadTestGlobalVariables.streams=numberOfStreams;
+			downloadTestGlobalVariables.dataLength=numberOfMB*1048576;
+
+			console.log('INFO: downloadTestGlobalVariables.streams è pari a  ' + downloadTestGlobalVariables.streams);
+			console.log('INFO: downloadTestGlobalVariables.dataLength è pari a  ' + downloadTestGlobalVariables.dataLength);
+			downloadTest(function(){console.log('END: Finito test singolo di ' + testType)});
+		}
+		else if(testType==='upload'){
+			speedTestGlobalVariables.testStatus=3;
+			uploadTestGlobalVariables.streams=numberOfStreams;
+			uploadTestGlobalVariables.dataLength=numberOfMB*1048576;
+
+			console.log('INFO: uploadTestGlobalVariables.streams è pari a  ' + uploadTestGlobalVariables.streams);
+			console.log('INFO: uploadTestGlobalVariables.dataLength è pari a  ' + uploadTestGlobalVariables.dataLength);
+			uploadTest(function(){console.log('END: Finito test singolo di ' + testType)});
+		}
+		else{
+			console.log('Specificare come testType la stringa download o upload'); //Poi magari penso a come mettere separato il test per il ping
+		}
+
+	}
+
+
+	else{
+		(function(){
+			speedTestGlobalVariables.testStatus=1;
+			ping(
+				function(){
+					speedTestGlobalVariables.testStatus=2;
+					downloadTest(
+						function(){
+							speedTestGlobalVariables.testStatus=3;
+							uploadTest(
+								function(){
+									speedTestGlobalVariables.testStatus=4;
+								})
 							})
-					})
-			})
-	})();
+						})
+					})()
+	}
 }
+
 /*************END SPEEDTEST****************/
