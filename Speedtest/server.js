@@ -23,7 +23,6 @@ var server = http.createServer(function (req, res) {
 		var query = url_parts.query;
 		var reqObj=(JSON.parse(query.data));
 		if (reqObj.request==='download' && reqObj.data_length){
-			res.setHeader('Access-Control-Allow-Origin', '*');
 			var data= generateTestData(reqObj.data_length);
 			res.writeHead(200);
 			res.end(data);
