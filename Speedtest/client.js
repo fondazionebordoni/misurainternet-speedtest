@@ -1,3 +1,10 @@
+/*
+	This code is derived from: speedtest_worker.js by Federico Dossena
+	Licensed under the GNU LGPL license version 3,
+	Original version:
+		-> https://github.com/adolfintel/speedtest/blob/master/speedtest_worker.js
+*/
+
 /*************GLOBAL VARIABLES****************/
 var sizes={
 	oneKB: 1024,
@@ -60,15 +67,15 @@ function generateTestData(numberOfMB){
 	var array=[];
 	var buffer=new ArrayBuffer(1048576);
 	var bufferView= new Uint32Array(buffer);
-	var limit= Math.pow(2,32);
+	var upperBound= Math.pow(2,33) - 1;
 	for(var i=0; i<bufferView.length; i++){
-		bufferView[i]=Math.random() * limit;
+		bufferView[i]=Math.floor(Math.random() * upperBound);
 	}
 	for(var i=0; i<numberOfMB;i++){
 		array.push(bufferView);
 	}
-	var b= new Blob(array);
-	return b;
+	var testDataBlob= new Blob(array);
+	return testDataBlob;
 }
 /*************END UTILITY FUNCTIONS****************/
 

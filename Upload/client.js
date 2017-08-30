@@ -1,3 +1,10 @@
+/*
+	This code is derived from: speedtest_worker.js by Federico Dossena
+	Licensed under the GNU LGPL license version 3,
+	Original version:
+		-> https://github.com/adolfintel/speedtest/blob/master/speedtest_worker.js
+*/
+
 var sizes={
 	oneKB: 1024,
 	oneMB: 1048576,
