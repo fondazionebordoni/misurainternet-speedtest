@@ -112,6 +112,7 @@ function generateTestData(numberOfMB){
 
 /*************PING TEST****************/
 function pingTest(nextFunction){
+	var firstPingDone=false;
 	var count=0;
 	var totalTime=0;
 	var t0=0;
@@ -130,32 +131,46 @@ function pingTest(nextFunction){
 
 	ws.onmessage=function(){
 		var tf=Date.now();
-		count++;
-		var latency= tf - t0;
-		totalTime+=latency;
 
-		console.log('INFO: Sono stati effettuati ' + count + ' ping');
-		console.log('INFO: Il ping è ' + latency + 'ms');
-		console.log('INFO: Il tempo TOTALE è ' + totalTime + 'ms');
-
-		if(count===pingGlobalVariables.n_tot){
+		if(!firstPingDone){  //escludo il primo ping
+			var firstPingValue= tf - t0;
+			firstPingDone=true;
+			console.log('INFO: Primo ping!');
+			console.log('INFO: Il valore del primo ping è ' + firstPingValue);
 			console.log('___________________________________________________');
-			console.log('END: Misura terminata!');
-			console.log('END: Sono stati effettuati in tutto ' + count + ' misurazioni');
-			console.log('END: La media è ' + totalTime/count + 'ms');
-			console.log('___________________________________________________');
-			console.log('___________________________________________________');
-			console.log('___________________________________________________');
-			ws.close();
-			if(nextFunction!=undefined){
-				nextFunction();
-			}
-		}
-		else{
 			t0=Date.now();
 			ws.send('');
 		}
-	}
+
+		else{
+			count++;
+			var latency= tf - t0;
+			totalTime+=latency;
+
+			console.log('INFO: Sono stati effettuati ' + count + ' ping');
+			console.log('INFO: Il ping è ' + latency + 'ms');
+			console.log('INFO: Il tempo TOTALE è ' + totalTime + 'ms');
+
+			if(count===pingGlobalVariables.n_tot){
+				console.log('___________________________________________________');
+				console.log('END: Misura terminata!');
+				console.log('END: Sono stati effettuati in tutto ' + count + ' misurazioni');
+				console.log('END: La media è ' + totalTime/count + 'ms');
+				console.log('___________________________________________________');
+				console.log('___________________________________________________');
+				console.log('___________________________________________________');
+				ws.close();
+				if(nextFunction!=undefined){
+					nextFunction();
+				}
+			}
+			else{
+				t0=Date.now();
+				ws.send('');
+			}
+		}
+
+	}  //end onmessage
 
 }
 /*************END PING TEST****************/
@@ -209,7 +224,7 @@ function downloadTest(nextFunction) {
 	var prevInstSpeedInMbs=0;
 
 	for(var i=0;i<downloadTestGlobalVariables.streams;i++){
-		downloadStream(i,downloadTestGlobalVariables.dataLength,0);
+		downloadStream(i,downloadTestGlobalVariables.dataLength,i*100);
 	}
 
 	var firstInterval = setInterval(function () {
@@ -334,7 +349,7 @@ function uploadTest(nextFunction) {
 	var testData=generateTestData(uploadTestGlobalVariables.dataLength/(Math.pow(1024,2)));
 
 	for(var i=0;i<uploadTestGlobalVariables.streams;i++){
-		uploadStream(i,testData,0);
+		uploadStream(i,testData,i*100);
 	}
 
 	var firstInterval = setInterval(function () {
