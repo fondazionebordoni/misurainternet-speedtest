@@ -15,7 +15,7 @@ var sizes={
 };
 
 var pingGlobalVariables={
-	n_tot: 4,
+	n_tot: 4
 };
 
 var downloadTestGlobalVariables={
@@ -49,6 +49,35 @@ var speedTestGlobalVariables={
 
 
 /*************UTILITY FUNCTIONS****************/
+function terminateWorker(){
+	var response={status: 'finished'};
+	self.postMessage(JSON.stringify(response));
+	self.close();
+}
+
+
+function restorePreviousSettings(){
+	//ripristina i valori di default (necessario quando chiamo il metodo piu volte in successione)
+	//TODO: eliminare questa funzione quando userò i web workers per mostrare i risultati sull'interfaccia
+	//perche ogni volta che cliccherò sul tasto start verrà creato un nuovo worker e non verrà richiamato
+	//lo stesso worker di prima
+	speedTestGlobalVariables.speedtestFailed=false;
+
+	pingGlobalVariables.n_tot=4;
+
+	downloadTestGlobalVariables.testDone=false;
+	downloadTestGlobalVariables.downloadedBytes=0;
+	downloadTestGlobalVariables.count=0;
+	downloadTestGlobalVariables.xhrArray=[];
+
+	uploadTestGlobalVariables.testDone=false;
+	uploadTestGlobalVariables.uploadedBytes=0;
+	uploadTestGlobalVariables.count=0;
+	uploadTestGlobalVariables.xhrArray=[];
+}
+
+
+
 function closeAllConnections(arrayOfXhrs){
 	for(var i=0;i<arrayOfXhrs.length; i++){
 		arrayOfXhrs[i].onprogress = null;
@@ -82,7 +111,7 @@ function generateTestData(numberOfMB){
 
 
 /*************PING TEST****************/
-function ping(nextFunction){
+function pingTest(nextFunction){
 	var count=0;
 	var totalTime=0;
 	var t0=0;
@@ -244,6 +273,8 @@ function downloadTest(nextFunction) {
 					console.log('___________________________________________________');
 					console.log('___________________________________________________');
 					console.log('___________________________________________________');
+
+					//esegui, se presente, la successiva funzione
 					if(nextFunction!=undefined){
 						nextFunction();
 					}
@@ -381,9 +412,93 @@ function uploadTest(nextFunction) {
 
 
 
-/*************SPEEDTEST****************/
-function startSpeedtest(testType, numberOfStreams, numberOfMB){
+/*************SPEEDTEST (using default settings)****************/
+function startSpeedtest(){
 	console.log('INFO: Inizia lo speedtest!');
-	ping(function(){downloadTest(function(){uploadTest()})});
+	pingTest(function(){
+		downloadTest(
+			function(){
+				uploadTest(terminateWorker);
+			}
+		)
+	});
 }
 /*************END SPEEDTEST****************/
+
+
+/*********JUST FOR TESTING PURPOSE***********/
+function startPingTest(numOfPings){
+	console.log('INFO: Inizia il test di ping!');
+
+	if(numOfPings!=undefined){
+		pingGlobalVariables.n_tot=numOfPings;
+	}
+	console.log('INFO: pingGlobalVariables.n_tot è pari a  ' + pingGlobalVariables.n_tot);
+	pingTest(function(){
+		console.log('END: Finito test singolo di ping');
+		terminateWorker();
+	});
+
+}
+
+
+function startDownloadTest(downloadSizeInMB,numberOfStreams){
+	console.log('INFO: Inizia il test di download!');
+
+	if(downloadSizeInMB!=undefined){
+		downloadTestGlobalVariables.dataLength=downloadSizeInMB*1048576
+	}
+
+	if(numberOfStreams!=undefined){
+		downloadTestGlobalVariables.streams=numberOfStreams;
+	}
+	console.log('INFO: downloadTestGlobalVariables.streams è pari a  ' + downloadTestGlobalVariables.streams);
+	console.log('INFO: downloadTestGlobalVariables.dataLength è pari a  ' + downloadTestGlobalVariables.dataLength);
+	downloadTest(function(){
+		console.log('END: Finito test singolo di download');
+		terminateWorker();
+	});
+}
+
+function startUploadTest(uploadSizeInMB,numberOfStreams){
+	console.log('INFO: Inizia il test di upload!');
+
+	if(uploadSizeInMB!=undefined){
+		uploadTestGlobalVariables.dataLength=uploadSizeInMB*1048576
+	}
+
+	if(numberOfStreams!=undefined){
+		uploadTestGlobalVariables.streams=numberOfStreams;
+	}
+	console.log('INFO: uploadTestGlobalVariables.streams è pari a  ' + uploadTestGlobalVariables.streams);
+	console.log('INFO: uploadTestGlobalVariables.dataLength è pari a  ' + uploadTestGlobalVariables.dataLength);
+	uploadTest(function(){
+		console.log('END: Finito test singolo di upload');
+		terminateWorker();
+	});
+
+}
+
+
+/****************WORKER LISTENER (IIFE)***************/
+(function workerListener(){
+	self.onmessage=function(message){
+		var req=JSON.parse(message.data);
+		if(req.type==='ping'){
+			startPingTest(req.numOfPings);
+		}
+		else if(req.type==='download'){
+			startDownloadTest(req.numOfMB, req.numOfStreams);
+		}
+		else if(req.type==='upload'){
+			startUploadTest(req.numOfMB, req.numOfStreams);
+		}
+		else if(req.type==='speedtest'){
+			startSpeedtest();
+		}
+	}
+})();
+/****************END WORKER LISTENER***************/
+
+
+/*********END-JUST FOR TESTING PURPOSE***********/
