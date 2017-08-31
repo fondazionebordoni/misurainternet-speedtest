@@ -413,8 +413,33 @@ function uploadTest(nextFunction) {
 
 
 /*************SPEEDTEST (using default settings)****************/
-function startSpeedtest(){
+function startSpeedtest(numOfPings, numOfMB, numOfStreams, hostName){
+
+	if(hostName!=undefined){
+		speedTestGlobalVariables.serverName=hostName;
+	}
+
+	if(numOfPings!=undefined){
+		pingGlobalVariables.n_tot=numOfPings;
+	}
+
+	if(numOfMB!=undefined){
+		downloadTestGlobalVariables.dataLength=numOfMB*1048576;
+		uploadTestGlobalVariables.dataLength=numOfMB*1048576;
+	}
+
+	if(numOfStreams!=undefined){
+		downloadTestGlobalVariables.streams=numOfStreams;
+		uploadTestGlobalVariables.streams=numOfStreams;
+	}
+
+	console.log('INFO: pingGlobalVariables.n_tot è pari a  ' + pingGlobalVariables.n_tot);
+	console.log('INFO: downloadTestGlobalVariables.streams è pari a  ' + downloadTestGlobalVariables.streams);
+	console.log('INFO: downloadTestGlobalVariables.dataLength è pari a  ' + downloadTestGlobalVariables.dataLength);
+	console.log('INFO: uploadTestGlobalVariables.streams è pari a  ' + uploadTestGlobalVariables.streams);
+	console.log('INFO: uploadTestGlobalVariables.dataLength è pari a  ' + uploadTestGlobalVariables.dataLength);
 	console.log('INFO: Inizia lo speedtest!');
+
 	pingTest(function(){
 		downloadTest(
 			function(){
@@ -427,8 +452,12 @@ function startSpeedtest(){
 
 
 /*********JUST FOR TESTING PURPOSE***********/
-function startPingTest(numOfPings){
+function startPingTest(numOfPings, hostName){
 	console.log('INFO: Inizia il test di ping!');
+
+	if(hostName!=undefined){
+		speedTestGlobalVariables.serverName=hostName;
+	}
 
 	if(numOfPings!=undefined){
 		pingGlobalVariables.n_tot=numOfPings;
@@ -442,16 +471,21 @@ function startPingTest(numOfPings){
 }
 
 
-function startDownloadTest(downloadSizeInMB,numberOfStreams){
+function startDownloadTest(downloadSizeInMB,numberOfStreams, hostName){
 	console.log('INFO: Inizia il test di download!');
 
+	if(hostName!=undefined){
+		speedTestGlobalVariables.serverName=hostName;
+	}
+
 	if(downloadSizeInMB!=undefined){
-		downloadTestGlobalVariables.dataLength=downloadSizeInMB*1048576
+		downloadTestGlobalVariables.dataLength=downloadSizeInMB*1048576;
 	}
 
 	if(numberOfStreams!=undefined){
 		downloadTestGlobalVariables.streams=numberOfStreams;
 	}
+
 	console.log('INFO: downloadTestGlobalVariables.streams è pari a  ' + downloadTestGlobalVariables.streams);
 	console.log('INFO: downloadTestGlobalVariables.dataLength è pari a  ' + downloadTestGlobalVariables.dataLength);
 	downloadTest(function(){
@@ -460,11 +494,15 @@ function startDownloadTest(downloadSizeInMB,numberOfStreams){
 	});
 }
 
-function startUploadTest(uploadSizeInMB,numberOfStreams){
+function startUploadTest(uploadSizeInMB,numberOfStreams, hostName){
 	console.log('INFO: Inizia il test di upload!');
 
+	if(hostName!=undefined){
+		speedTestGlobalVariables.serverName=hostName;
+	}
+
 	if(uploadSizeInMB!=undefined){
-		uploadTestGlobalVariables.dataLength=uploadSizeInMB*1048576
+		uploadTestGlobalVariables.dataLength=uploadSizeInMB*1048576;
 	}
 
 	if(numberOfStreams!=undefined){
@@ -485,16 +523,16 @@ function startUploadTest(uploadSizeInMB,numberOfStreams){
 	self.onmessage=function(message){
 		var req=JSON.parse(message.data);
 		if(req.type==='ping'){
-			startPingTest(req.numOfPings);
+			startPingTest(req.numOfPings, req.hostName);
 		}
 		else if(req.type==='download'){
-			startDownloadTest(req.numOfMB, req.numOfStreams);
+			startDownloadTest(req.numOfMB, req.numOfStreams, req.hostName);
 		}
 		else if(req.type==='upload'){
-			startUploadTest(req.numOfMB, req.numOfStreams);
+			startUploadTest(req.numOfMB, req.numOfStreams, req.hostName);
 		}
 		else if(req.type==='speedtest'){
-			startSpeedtest();
+			startSpeedtest(req.numOfPings, req.numOfMB, req.numOfStreams, req.hostName);
 		}
 	}
 })();
