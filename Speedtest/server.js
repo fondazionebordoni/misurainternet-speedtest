@@ -23,7 +23,7 @@ var server = http.createServer(function (req, res) {
 		var query = url_parts.query;
 		try{
 			var reqObj=(JSON.parse(query.data));
-			if (reqObj.request && reqObj.request==='download' && reqObj.data_length && reqObj.data_length>0 && reqObj.data_length<52428800){ //per il momento fisso il limite massimo a 50MB di dati scaricabili
+			if (reqObj.request && reqObj.request==='download' && reqObj.data_length && reqObj.data_length>0 && Number.isInteger(reqObj.data_length) && reqObj.data_length<=52428800){ //per il momento fisso il limite massimo a 50MB di dati scaricabili
 				var data= generateTestData(reqObj.data_length);
 				res.writeHead(200);
 				res.end(data);
@@ -47,6 +47,7 @@ var server = http.createServer(function (req, res) {
 	else if(req.method==='OPTIONS'){
 		console.log('messaggio ricevuto OPTIONS')
 		res.setHeader('Access-Control-Allow-Methods', 'POST');
+		res.setHeader('Access-Control-Allow-Headers','Content-Type'); //per far funzionare il test di upload con Safari 10.1.1
 		res.setHeader('Access-Control-Max-Age',600); // il client puo inviarmi altre richieste POST per 5 minuti prima di dover nuovamente mandarmi nuovamente una richiesta OPTIONS
 		res.writeHead(200);
 		res.end();
