@@ -59,7 +59,7 @@ var server = http.createServer(function (req, res) {
 	}
 
 })
-server.listen(8080);
+server.listen(process.argv[2]);
 
 wss = new WebSocketServer({server: server});
 wss.on('connection', function(ws) {
