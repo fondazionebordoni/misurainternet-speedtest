@@ -1,0 +1,22 @@
+{
+  "name": "misurainternet-speedtest",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fondazionebordoni/misurainternet-speedtest.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/fondazionebordoni/misurainternet-speedtest/issues"
+  },
+  "homepage": "https://github.com/fondazionebordoni/misurainternet-speedtest#readme",
+  "dependencies": {
+    "ws": "^3.3.1"
+  }
+}
