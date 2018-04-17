@@ -33,11 +33,11 @@ var serverFunc = function (req, res) {
 	else if(req.method==='GET'){
 		console.log('Received message GET');
 		var url_parts = url.parse(req.url, true);
+
 		var query = url_parts.query;
 		try{
 			var reqObj=(JSON.parse(query.data));
-			if (reqObj.request && reqObj.request==='download' && reqObj.data_length && reqObj.data_length>0 && Number.isInteger(reqObj.data_length) && reqObj.data_length<=52428800*2){ //per il momento fisso il limite massimo a 50MB di dati scaricabili
-				//var data = generateTestData(reqObj.data_length);
+			if (reqObj.request && reqObj.request==='download' && reqObj.data_length && reqObj.data_length>0 && Number.isInteger(reqObj.data_length) && reqObj.data_length<=52428800){
 				res.writeHead(200);
 				res.end(data);
 			}
@@ -54,7 +54,6 @@ var serverFunc = function (req, res) {
 			res.writeHead(404);
 			res.end();
 		}
-
 	}
 
 	else if(req.method==='OPTIONS'){
@@ -83,7 +82,7 @@ var server07 = http.createServer(serverFunc);
 var server08 = http.createServer(serverFunc);
 var server09 = http.createServer(serverFunc);
 var server10 = http.createServer(serverFunc);
-server01.listen(process.argv[2]);
+server01.listen(60100);
 server02.listen(60101);
 server03.listen(60102);
 server04.listen(60103);
