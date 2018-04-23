@@ -13,7 +13,36 @@ var m1 = 1048576;
 var m5 = 5242880;
 var m10 = 5242880*2;
 var m25 = m50/2;
-var data = generateTestData(m50);
+var m20 = m5*4
+var m30 = m10*3;
+var m80 = m10*8;
+var data80 = generateTestData(m80);
+var data50 = generateTestData(m50);
+var data30 = generateTestData(m30);
+var data25 = generateTestData(m25);
+var data20 = generateTestData(m20);
+var data10 = generateTestData(m10);
+var data5 = generateTestData(m5);
+var data1 = generateTestData(m1);
+
+function getBlob(bytes) {
+	if(bytes === m80)
+		return data80;
+	if(bytes === m50)
+		return data50;
+	if(bytes === m30)
+		return data30;
+	if(bytes === m25)
+		return data25;
+	if(bytes === m20)
+		return data20;
+	if(bytes === m10)
+		return data10;
+	if(bytes === m5)
+		return data5;
+	if(bytes === m1)
+		return data1;
+}
 
 var serverFunc = function (req, res) {
 	res.setHeader('Access-Control-Allow-Origin', '*'); //modificare poi '*' con il sito di misurainternet
@@ -26,8 +55,19 @@ var serverFunc = function (req, res) {
 
 	if(req.method==='POST'){
 		console.log('Received message POST');
-		res.writeHead(200);
-		res.end();
+		
+		var bytesReceived = 0;
+		req.on('data', function(data) {
+			bytesReceived += data.byteLength;
+		});
+		req.on('end', function() {
+			var responseBody = JSON.stringify(
+			{
+				bytes: bytesReceived.toString()
+			});
+			res.writeHead(200);
+			res.end(responseBody);
+		});
 	}
 
 	else if(req.method==='GET'){
@@ -37,9 +77,9 @@ var serverFunc = function (req, res) {
 		var query = url_parts.query;
 		try{
 			var reqObj=(JSON.parse(query.data));
-			if (reqObj.request && reqObj.request==='download' && reqObj.data_length && reqObj.data_length>0 && Number.isInteger(reqObj.data_length) && reqObj.data_length<=52428800){
+			if (reqObj.request && reqObj.request==='download' && reqObj.data_length && reqObj.data_length>0 && Number.isInteger(reqObj.data_length)){
 				res.writeHead(200);
-				res.end(data);
+				res.end(getBlob(reqObj.data_length));
 			}
 			else{
 				console.log('Formato JSON non valido');
