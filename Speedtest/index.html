@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Speedtest Mockup</title>
+</head>
+<body>
+  <p>Speed: <output id="speed">0.0</output></p>
+  <p>Bytes downloaded: <output id="bytes">0.0</output></p>
+  <button onclick="startWorker()">Start</button>
+  <script>
+	var w;
+	function startWorker() {
+		if(typeof(w) == "undefined") {
+			w = new Worker("download-test-mockup.js");
+		}
+	
+		w.onmessage = function(event) {
+			document.getElementById("speed").innerHTML = event.data.speed;
+			document.getElementById("bytes").innerHTML = event.data.bytes;
+		};
+	}
+  </script>
+</body>
+</html>
