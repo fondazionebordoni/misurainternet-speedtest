@@ -3,6 +3,7 @@ var crypto = require('crypto');
 var url = require('url');
 var events = require('events');
 var WebSocketServer = require('ws').Server;
+var fs = require('fs');
 
 function generateTestData(bytes){
 	return crypto.randomBytes(bytes);
@@ -74,25 +75,60 @@ var serverFunc = function (req, res) {
 		console.log('Received message GET');
 		var url_parts = url.parse(req.url, true);
 
-		var query = url_parts.query;
-		try{
-			var reqObj=(JSON.parse(query.data));
-			if (reqObj.request && reqObj.request==='download' && reqObj.data_length && reqObj.data_length>0 && Number.isInteger(reqObj.data_length)){
-				res.writeHead(200);
-				res.end(getBlob(reqObj.data_length));
+		if(url_parts.pathname === '/index') {
+			console.log('index start');
+			fs.readFile('index.html', function(err, file) {
+				if(err) {
+					res.writeHead(404);
+					res.end();
+				}
+					
+				res.writeHead(200, { "Content-Type": require('mime').getType('html') });
+				res.write(file, 'binary');
+				res.end();
+			});
+			console.log('index end');
+		}
+		else if(url_parts.pathname === '/download-test-mockup.js') {
+			console.log('worker start');
+			fs.readFile('download-test-mockup.js', function(err, file) {
+				if(err) {
+					res.writeHead(404);
+					res.end();
+				}
+					
+				res.writeHead(200, { "Content-Type": require('mime').getType('js') });
+				res.write(file, 'binary');
+				res.end();
+			});
+			console.log('worker end');
+		}
+		else if(url_parts.pathname === '/favicon.ico') {
+			res.writeHead(200);
+			res.end();
+		}
+		else {
+		
+			var query = url_parts.query;
+			try{
+				var reqObj=(JSON.parse(query.data));
+				if (reqObj.request && reqObj.request==='download' && reqObj.data_length && reqObj.data_length>0 && Number.isInteger(reqObj.data_length)){
+					res.writeHead(200);
+					res.end(getBlob(reqObj.data_length));
+				}
+				else {
+					console.log('Formato JSON non valido');
+					console.log(reqObj);
+					res.writeHead(404);
+					res.end();
+				}
 			}
-			else{
-				console.log('Formato JSON non valido');
-				console.log(reqObj);
+			catch(e){
+				console.log('Errore nel parsing del JSON spedito tramite GET');
+				console.log(e);
 				res.writeHead(404);
 				res.end();
 			}
-		}
-		catch(e){
-			console.log('Errore nel parsing del JSON spedito tramite GET');
-			console.log(e);
-			res.writeHead(404);
-			res.end();
 		}
 	}
 
