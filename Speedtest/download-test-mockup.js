@@ -1,13 +1,11 @@
 
-var host = "192.168.1.180";
+var hostIP = "192.168.1.180";
 var totalBytes = 0;
 var startTime;
-var go = true;
+var testDone = false;
 var serverPorts = ["60100", "60101", "60102", "60103", "60104", "60105", "60106", "60107", "60108", "60109"];
-var lastStartTimes = [];
+var xhrArray = [];
 var endTime = null;
-var streamsFinished = 0;
-var testFinished = false;
 
 var m50 = 52428800;
 var m1 = 1048576;
@@ -18,66 +16,90 @@ var m20 = m5*4;
 var m30 = m10*3;
 var m80 = m10*8;
 
-var bytesToDownload = m50;
-var numberOfStreams = 2;
+var bytesToDownload = m20;
+var bytesToUpload = m50;
+var numberOfStreams = 10;
+var testData=generateTestData(bytesToUpload/(Math.pow(1024,2)));
 
-var downloadStream = function(index, delay, host) {
+function generateTestData(numberOfMB){
+	var array=[];
+	var buffer=new ArrayBuffer(1048576);
+	var bufferView= new Uint32Array(buffer);
+	var upperBound= Math.pow(2,33) - 1;
+	for(var i=0; i<bufferView.length; i++){
+		bufferView[i]=Math.floor(Math.random() * upperBound);
+	}
+	for(var i=0; i<numberOfMB;i++){
+		array.push(bufferView);
+	}
+	var testDataBlob= new Blob(array);
+	return testDataBlob;
+}
+
+var loadStream = function(index, delay, host) {
 	setTimeout(function() {
-		var req = {
-			request:'download',
-			data_length: bytesToDownload
-		};
+		if(testDone){
+			xhrArray[index].abort();
+			return;
+		}
 
-		var jsonReq = JSON.stringify(req);
-		var url = 'http://' + host + '?r=' + Math.random() + "&data=" + encodeURIComponent(jsonReq);
-		
-		lastStartTimes[index] = Date.now();
-		console.log(index);
-		var fetchRequest = new Request(url);
-		fetch(fetchRequest).then(function(response) {
-			return response.blob();
-		}).then(function(blob) {
-			if(go) {
-				totalBytes += blob.size;
-				downloadStream(index, 0, host);
-			} else {
-				streamsFinished++;
-				if(endTime == null) {
-					totalBytes += blob.size;
-					endTime = Date.now();
-				} else {
-					var thisStreamDuration = Date.now() - lastStartTimes[index];
-					var timeTillEndTime = endTime - lastStartTimes[index];
-					
-					var bytesToAdd = blob.size*timeTillEndTime/thisStreamDuration/2;
-					totalBytes += bytesToAdd;
-					console.log(timeTillEndTime.toString() + ' ' +  bytesToAdd.toString()/1024/1024);
-					if(streamsFinished == numberOfStreams) {
-						testFinished = true;
+			var url = 'http://' + host + '?r=' + Math.random();
+			
+			var prevLoadedBytes=0;
+			var xhr = new XMLHttpRequest();
+			xhrArray[index]=xhr;
+
+			xhrArray[index].upload.onprogress=function(event){
+				addBytes(event.loaded);
+			};
+
+			xhrArray[index].onerror=function(event){
+				handleDownloadAndUploadErrors(firstInterval,secondInterval,xhrArray);
+
+				self.postMessage(JSON.stringify(
+					{
+						type: 'error',
+						content: 1237
 					}
-				}
+				));
+			};
+	
+			xhrArray[index].upload.onload=function(event){
+				xhrArray[index].abort();
+				addBytes(event.loaded);
+				loadStream(index,0,host);
+			};
+			
+			xhrArray[index].upload.onabort=function(event){
+				addBytes(event.loaded);
+			};
+		
+			function addBytes(newTotalBytes) {
+				var loadedBytes = newTotalBytes <= 0 ? 0 : (newTotalBytes - prevLoadedBytes);
+				totalBytes += loadedBytes;
+				prevLoadedBytes = newTotalBytes;
 			}
-		});
+
+			xhrArray[index].open('POST',url);
+			xhrArray[index].send(testData);
 	}, delay);
 }
 
-var j=0;
 var k=0;
 var downloadHostAndPorts = [];
 serverPorts.forEach(function (item, index) {
-	downloadHostAndPorts[index] = host + ':' + item;
+	downloadHostAndPorts[index] = hostIP + ':' + item;
 });
 
 startTime = Date.now();
 
 for(var i=0;i<numberOfStreams;i++){
-	if(j<1)
-		j++;
-	else {
-		k++;
-		j=1;
-	}
-	downloadStream(i,i*10,downloadHostAndPorts[k]);
+	if(k >= downloadHostAndPorts.length)
+			k = 0;
+	
+	loadStream(i,i*100,downloadHostAndPorts[k]);
+	
+	k++;
 }
 
 var interval = setInterval(function() {
@@ -93,10 +115,8 @@ var interval = setInterval(function() {
 	postMessage({'speed': speedInMbps, 'bytes': totalBytes});
 	
 	if(elapsedTime > 10000) {
-		go = false;
-	}
-	
-	if(testFinished) {
+		console.log('end');
+		testDone = true;
 		clearInterval(interval);
 		close();
 	}

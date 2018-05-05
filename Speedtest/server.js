@@ -4,45 +4,23 @@ var url = require('url');
 var events = require('events');
 var WebSocketServer = require('ws').Server;
 var fs = require('fs');
+const { Readable } = require('stream');
+
+var serverPorts = ["60100", "60101", "60102", "60103", "60104", "60105", "60106", "60107", "60108", "60109"];
 
 function generateTestData(bytes){
 	return crypto.randomBytes(bytes);
 }
 
-var m50 = 52428800;
-var m1 = 1048576;
-var m5 = 5242880;
-var m10 = 5242880*2;
-var m25 = m50/2;
-var m20 = m5*4
-var m30 = m10*3;
-var m80 = m10*8;
-var data80 = generateTestData(m80);
-var data50 = generateTestData(m50);
-var data30 = generateTestData(m30);
-var data25 = generateTestData(m25);
-var data20 = generateTestData(m20);
-var data10 = generateTestData(m10);
-var data5 = generateTestData(m5);
-var data1 = generateTestData(m1);
+var data;
+var currentSize = 0;
 
 function getBlob(bytes) {
-	if(bytes === m80)
-		return data80;
-	if(bytes === m50)
-		return data50;
-	if(bytes === m30)
-		return data30;
-	if(bytes === m25)
-		return data25;
-	if(bytes === m20)
-		return data20;
-	if(bytes === m10)
-		return data10;
-	if(bytes === m5)
-		return data5;
-	if(bytes === m1)
-		return data1;
+	if(bytes != currentSize) {
+		data = generateTestData(bytes);
+		currentSize = bytes;
+	}
+	return data;
 }
 
 var serverFunc = function (req, res) {
@@ -56,19 +34,8 @@ var serverFunc = function (req, res) {
 
 	if(req.method==='POST'){
 		console.log('Received message POST');
-		
-		var bytesReceived = 0;
-		req.on('data', function(data) {
-			bytesReceived += data.byteLength;
-		});
-		req.on('end', function() {
-			var responseBody = JSON.stringify(
-			{
-				bytes: bytesReceived.toString()
-			});
-			res.writeHead(200);
-			res.end(responseBody);
-		});
+		res.writeHead(200);
+		res.end();
 	}
 
 	else if(req.method==='GET'){
@@ -113,7 +80,13 @@ var serverFunc = function (req, res) {
 			try{
 				var reqObj=(JSON.parse(query.data));
 				if (reqObj.request && reqObj.request==='download' && reqObj.data_length && reqObj.data_length>0 && Number.isInteger(reqObj.data_length)){
-					res.writeHead(200);
+					res.writeHead(200, {
+						'Content-Description': 'File Transfer',
+						'Content-Type': 'application/octet-stream',
+						'Content-Transfer-Encoding': 'binary',
+						'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0, post-check=0, pre-check=0',
+						'Pragma': 'no-cache'
+					});
 					res.end(getBlob(reqObj.data_length));
 				}
 				else {
@@ -148,28 +121,14 @@ var serverFunc = function (req, res) {
 
 }
 
-var server01 = http.createServer(serverFunc);
-var server02 = http.createServer(serverFunc);
-var server03 = http.createServer(serverFunc);
-var server04 = http.createServer(serverFunc);
-var server05 = http.createServer(serverFunc);
-var server06 = http.createServer(serverFunc);
-var server07 = http.createServer(serverFunc);
-var server08 = http.createServer(serverFunc);
-var server09 = http.createServer(serverFunc);
-var server10 = http.createServer(serverFunc);
-server01.listen(60100);
-server02.listen(60101);
-server03.listen(60102);
-server04.listen(60103);
-server05.listen(60104);
-server06.listen(60105);
-server07.listen(60106);
-server08.listen(60107);
-server09.listen(60108);
-server10.listen(60109);
 
-wss = new WebSocketServer({server: server01});
+var servers = [];
+serverPorts.forEach(function (item, index) {
+	servers[index] = http.createServer(serverFunc);
+	servers[index].listen(item);
+});
+
+wss = new WebSocketServer({server: servers[0]});
 wss.on('connection', function(ws) {
 	ws.on('message', function(message) {
 		console.log('Received ping message');
