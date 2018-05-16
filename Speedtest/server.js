@@ -130,8 +130,51 @@ serverPorts.forEach(function (item, index) {
 
 wss = new WebSocketServer({server: servers[0]});
 wss.on('connection', function(ws) {
+	console.log('wss connected');
 	ws.on('message', function(message) {
 		console.log('Received ping message');
 		ws.send('');
+	});
+});
+
+function calculateCurrentTime() {
+	var currentdate = new Date(); 
+	var datetime = "Last Sync: " + currentdate.getDate() + "/"
+                + (currentdate.getMonth()+1)  + "/" 
+                + currentdate.getFullYear() + " @ "  
+                + currentdate.getHours() + ":"  
+                + currentdate.getMinutes() + ":";
+	currSec = currentdate.getSeconds();
+	if(currSec < 10)
+		datetime = datetime + "0" + currSec;
+	else
+		datetime = datetime + currSec;
+
+	return datetime;
+}
+
+//Connessione WebSocket per il calcolo del packet loss, su una porta diversa dal ping (ora 60101, severPorts[1])
+wssPktLoss = new WebSocketServer({server: servers[1]});
+//A fini di test voglio perdere un certo numero di pacchetti
+const packetsToLose = 9;
+
+wssPktLoss.on('connection', function(ws) {
+	//Conto quanti paccketti ho ricevuto/risposto
+	let packetCount = 0;
+	//Conto i pacchetti che ho volutamente perso
+	let packetsLost = 0;
+	
+	console.log(`WebSocketPacketLoss connected (${calculateCurrentTime()})`);
+	
+	ws.on('message', function(message) {
+		packetCount++;
+		console.log(`(pktLoss) Received ping message #${packetCount}`);
+		
+		if(packetCount >= 15 && packetsLost < packetsToLose) {
+			console.log(`Packet #${packetCount} lost!`);
+			packetsLost++;
+		} else {
+			ws.send('');
+		}
 	});
 });
