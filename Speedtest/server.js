@@ -156,7 +156,7 @@ function calculateCurrentTime() {
 //Connessione WebSocket per il calcolo del packet loss, su una porta diversa dal ping (ora 60101, severPorts[1])
 wssPktLoss = new WebSocketServer({server: servers[1]});
 //A fini di test voglio perdere un certo numero di pacchetti
-const packetsToLose = 9;
+const packetsToLose = 5;
 
 wssPktLoss.on('connection', function(ws) {
 	//Conto quanti paccketti ho ricevuto/risposto
