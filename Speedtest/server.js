@@ -33,13 +33,13 @@ var serverFunc = function (req, res) {
 	});
 
 	if(req.method==='POST'){
-		console.log('Received message POST');
+		console.log('Received message: POST');
 		res.writeHead(200);
 		res.end();
 	}
 
 	else if(req.method==='GET'){
-		console.log('Received message GET');
+		console.log('Received message: GET');
 		var url_parts = url.parse(req.url, true);
 
 		if(url_parts.pathname === '/index') {
@@ -106,7 +106,7 @@ var serverFunc = function (req, res) {
 	}
 
 	else if(req.method==='OPTIONS'){
-		console.log('messaggio ricevuto OPTIONS')
+		console.log('Received message: OPTIONS')
 		res.setHeader('Access-Control-Allow-Methods', 'POST');
 		res.setHeader('Access-Control-Allow-Headers','Content-Type'); //per far funzionare il test di upload con Safari 10.1.1
 		res.setHeader('Access-Control-Max-Age',600); // il client puo inviarmi altre richieste POST per 5 minuti prima di dover nuovamente mandarmi nuovamente una richiesta OPTIONS
@@ -131,7 +131,7 @@ serverPorts.forEach(function (item, index) {
 wss = new WebSocketServer({server: servers[0]});
 wss.on('connection', function(ws) {
 	ws.on('message', function(message) {
-		console.log('Received ping message');
+		console.log('Received message: PING');
 		ws.send('');
 	});
 });
