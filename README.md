@@ -48,7 +48,7 @@ L'ip va inserito direttamente nel codice.
 ### Avvio server
 
 Una volta configurato, il server è pronto per l'utilizzo
-* Dalla bash, navigare nella cartella `/misurainternet-speedtest/Speedtest`
+* Dalla bash, navigare nella cartella `/misurainternet-speedtest`
 * Usare il comando `node server.js` per avviare il server e metterlo in ascolto.
 Ora è pronto per ricevere richieste dallo speedtest.
 
@@ -71,5 +71,5 @@ You must configure this application to use a local server. Open the file `/misur
 * Set `useCustomTestServer` on line 20 to `true`.
 * Edit `customTestServerIP` on line 21 with your custom IP.
 
-To run the server and make it listening navigate, with the bash, into `/misurainternet-speedtest/Speedtest` and run the command `node server.js`.
+To run the server and make it listening navigate, with the bash, into `/misurainternet-speedtest` and run the command `node server.js`.
 Now the server is ready.
